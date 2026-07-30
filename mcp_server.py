@@ -1,9 +1,13 @@
-import json
 from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from incident_retrieval import (
+    get_incident_collection,
+    index_incidents,
+    search_incidents_semantically,
+)
 from rag import (
     get_chroma_collection,
     index_runbooks,
@@ -12,7 +16,9 @@ from rag import (
 
 
 RUNBOOK_DIRECTORY = Path("data/runbooks")
-INCIDENTS_FILE = Path("data/incidents.json")
+
+RUNBOOK_MAX_DISTANCE = 0.95
+INCIDENT_MAX_DISTANCE = 1.0
 
 
 mcp = FastMCP(
@@ -24,39 +30,22 @@ mcp = FastMCP(
 )
 
 
-def load_incidents() -> list[dict[str, Any]]:
-    """Load historical incidents from the local JSON file."""
-
-    if not INCIDENTS_FILE.exists():
-        raise FileNotFoundError(
-            f"Incident file does not exist: {INCIDENTS_FILE}"
-        )
-
-    with INCIDENTS_FILE.open("r", encoding="utf-8") as file:
-        data = json.load(file)
-
-    if not isinstance(data, list):
-        raise ValueError("The incident file must contain a JSON list.")
-
-    return data
-
-
 @mcp.tool()
 def search_runbooks(
     query: str,
     limit: int = 3,
-    max_distance: float = 0.95,
+    max_distance: float = RUNBOOK_MAX_DISTANCE,
 ) -> dict[str, Any]:
     """
-    Search engineering runbooks using semantic similarity.
+    Search engineering runbooks using semantic vector similarity.
 
     Use this tool when an incident requires troubleshooting guidance,
-    likely causes, investigation procedures, remediation steps, or
+    likely causes, investigation steps, remediation guidance, or
     diagnostic commands.
 
-     Args:
+    Args:
         query:
-            A natural-language description of the technical problem.
+            Natural-language description of the technical incident.
 
         limit:
             Maximum number of runbook chunks to inspect.
@@ -65,6 +54,9 @@ def search_runbooks(
         max_distance:
             Maximum vector distance allowed for a result.
             Smaller values require stronger semantic similarity.
+
+    Returns:
+        Relevant runbook chunks and retrieval metadata.
     """
 
     cleaned_query = query.strip()
@@ -74,6 +66,9 @@ def search_runbooks(
 
     if not 1 <= limit <= 5:
         raise ValueError("limit must be between 1 and 5.")
+
+    if max_distance < 0:
+        raise ValueError("max_distance cannot be negative.")
 
     collection = get_chroma_collection()
 
@@ -95,6 +90,7 @@ def search_runbooks(
         "result_count": len(results),
         "max_distance": max_distance,
         "has_relevant_evidence": bool(results),
+        "retrieval_method": "semantic_vector_search",
         "results": results,
     }
 
@@ -102,24 +98,33 @@ def search_runbooks(
 @mcp.tool()
 def search_incidents(
     query: str,
-    limit: int = 3,
+    limit: int = 2,
+    max_distance: float = INCIDENT_MAX_DISTANCE,
 ) -> dict[str, Any]:
     """
-    Search historical engineering incidents using keyword matching.
+    Search historical engineering incidents using semantic similarity.
 
     Use this tool to find previous incidents with similar symptoms,
-    categories, services, root causes, or resolutions.
+    affected services, root causes, or resolutions, even when the current
+    incident uses different wording.
 
     Args:
         query:
-            Words describing the current incident.
+            Natural-language description of the current incident.
 
         limit:
-            Maximum number of incidents to return.
+            Maximum number of incident matches to inspect.
             Must be between 1 and 5.
+
+        max_distance:
+            Maximum vector distance allowed for a result.
+            Smaller values require stronger semantic similarity.
+
+    Returns:
+        Relevant historical incidents and retrieval metadata.
     """
 
-    cleaned_query = query.strip().lower()
+    cleaned_query = query.strip()
 
     if not cleaned_query:
         raise ValueError("query cannot be empty.")
@@ -127,52 +132,31 @@ def search_incidents(
     if not 1 <= limit <= 5:
         raise ValueError("limit must be between 1 and 5.")
 
-    query_terms = set(cleaned_query.split())
-    incidents = load_incidents()
+    if max_distance < 0:
+        raise ValueError("max_distance cannot be negative.")
 
-    ranked_incidents: list[tuple[int, dict[str, Any]]] = []
+    collection = get_incident_collection()
 
-    searchable_fields = (
-        "title",
-        "service",
-        "category",
-        "description",
-        "root_cause",
-        "resolution",
-    )
-
-    for incident in incidents:
-        searchable_text = " ".join(
-            str(incident.get(field, ""))
-            for field in searchable_fields
-        ).lower()
-
-        score = sum(
-            1
-            for term in query_terms
-            if term in searchable_text
+    if collection.count() == 0:
+        index_incidents(
+            collection=collection,
+            rebuild=False,
         )
 
-        if score > 0:
-            ranked_incidents.append((score, incident))
-
-    ranked_incidents.sort(
-        key=lambda item: item[0],
-        reverse=True,
+    results = search_incidents_semantically(
+        query=cleaned_query,
+        collection=collection,
+        limit=limit,
+        max_distance=max_distance,
     )
 
-    matches = [
-        {
-            **incident,
-            "match_score": score,
-        }
-        for score, incident in ranked_incidents[:limit]
-    ]
-
     return {
-        "query": query,
-        "result_count": len(matches),
-        "results": matches,
+        "query": cleaned_query,
+        "result_count": len(results),
+        "max_distance": max_distance,
+        "has_relevant_incidents": bool(results),
+        "retrieval_method": "semantic_vector_search",
+        "results": results,
     }
 
 
@@ -181,17 +165,25 @@ def read_runbook(filename: str) -> dict[str, str]:
     """
     Read the complete contents of a specific engineering runbook.
 
-    Use this tool after identifying a relevant source when the full
-    runbook is needed.
+    Use this tool when a relevant runbook has already been identified
+    and its complete contents are required.
 
     Args:
         filename:
             Exact Markdown filename, such as airflow_failures.md.
+
+    Returns:
+        The filename and complete Markdown content.
     """
 
-    safe_filename = Path(filename).name
+    cleaned_filename = filename.strip()
 
-    if safe_filename != filename:
+    if not cleaned_filename:
+        raise ValueError("filename cannot be empty.")
+
+    safe_filename = Path(cleaned_filename).name
+
+    if safe_filename != cleaned_filename:
         raise ValueError(
             "filename must contain only a file name, not a path."
         )
@@ -219,7 +211,7 @@ def read_runbook(filename: str) -> dict[str, str]:
 
 
 def main() -> None:
-    """Start the MCP server using the standard input/output transport."""
+    """Start the MCP server over standard input and output."""
 
     mcp.run(transport="stdio")
 
