@@ -59,17 +59,47 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+        html,
+        body,
+        [data-testid="stAppViewContainer"],
+        .stApp {
+            overflow-x: hidden;
+        }
+
         .stApp {
             background-color: #f7f9fc;
         }
 
-        .block-container {
+        [data-testid="stMainBlockContainer"] {
             max-width: 1280px;
             padding-top: 2rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
             padding-bottom: 4rem;
+            margin: 0 auto;
+        }
+
+        [data-testid="stSidebar"] {
+            background: #ffffff;
+            border-right: 1px solid #e7ebf2;
+        }
+
+        [data-testid="stSidebar"]
+        [data-testid="stSidebarContent"] {
+            overflow-x: hidden;
+        }
+
+        [data-testid="stSidebar"] .block-container {
+            width: 100%;
+            max-width: 100%;
+            padding-top: 1.5rem;
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
         }
 
         .hero {
+            width: 100%;
+            box-sizing: border-box;
             background:
                 linear-gradient(
                     135deg,
@@ -81,6 +111,7 @@ st.markdown(
             margin-bottom: 1.5rem;
             color: white;
             box-shadow: 0 16px 40px rgba(37, 99, 235, 0.18);
+            overflow-wrap: anywhere;
         }
 
         .hero-title {
@@ -212,20 +243,27 @@ st.markdown(
             padding: 0.9rem 1rem;
         }
 
-        [data-testid="stSidebar"] {
-            background: #ffffff;
-            border-right: 1px solid #e7ebf2;
-        }
-
-        [data-testid="stSidebar"] .block-container {
-            padding-top: 1.5rem;
-        }
-
         .footer {
             color: #94a3b8;
             text-align: center;
             font-size: 0.8rem;
             margin-top: 3rem;
+        }
+
+        @media (max-width: 900px) {
+            [data-testid="stMainBlockContainer"] {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .hero {
+                padding: 1.5rem;
+                border-radius: 16px;
+            }
+
+            .hero-title {
+                font-size: 1.8rem;
+            }
         }
     </style>
     """,
