@@ -1,0 +1,32 @@
+[
+    {
+      "id": "INC-1001",
+      "title": "Duplicate records after Airflow retry",
+      "service": "campaign-data-pipeline",
+      "category": "duplicate-key",
+      "description": "The campaign ingestion task failed after partially inserting records. Airflow retried the task and encountered a unique constraint violation.",
+      "root_cause": "The task used a plain INSERT and was not idempotent.",
+      "resolution": "The load was changed to use an UPSERT and a processed-file control table.",
+      "status": "Resolved"
+    },
+    {
+      "id": "INC-1002",
+      "title": "API timeout during high traffic",
+      "service": "reporting-api",
+      "category": "api-timeout",
+      "description": "The reporting endpoint returned HTTP 504 errors during peak traffic.",
+      "root_cause": "A slow database query exhausted the application connection pool.",
+      "resolution": "The query was optimized, an index was added, and connection-pool monitoring was introduced.",
+      "status": "Resolved"
+    },
+    {
+      "id": "INC-1003",
+      "title": "Duplicate source file processed",
+      "service": "file-ingestion-service",
+      "category": "duplicate-data",
+      "description": "The same source file was uploaded twice and processed by separate workers.",
+      "root_cause": "The application did not track processed file identifiers.",
+      "resolution": "A unique file checksum and processing control table were added.",
+      "status": "Resolved"
+    }
+  ]
