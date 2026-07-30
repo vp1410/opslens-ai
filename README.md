@@ -1,21 +1,114 @@
 # OpsLens AI
 
-OpsLens AI is a GenAI-powered engineering incident investigation assistant built to demonstrate **Retrieval-Augmented Generation (RAG)** and the **Model Context Protocol (MCP)**.
+OpsLens AI is an MCP-powered RAG assistant for engineering incident investigation.
 
-The application searches synthetic engineering runbooks and historical incidents before generating an evidence-grounded troubleshooting response.
+It helps engineers search troubleshooting runbooks and historical incidents, retrieve relevant evidence, and generate a cautious investigation plan with sources, confidence, and limitations.
+
+## Problem Statement
+
+During a production incident, engineers often spend significant time searching for information across different systems and documents, including:
+
+- engineering runbooks
+- historical incident records
+- database troubleshooting guides
+- API and data-pipeline documentation
+- operational notes
+- knowledge held by individual team members
+
+The information may exist, but it is often difficult to locate quickly.
+
+Traditional keyword search can also miss relevant information when an incident is described using different terminology.
+
+For example:
+
+```text
+The scheduled job reran after partially completing and attempted to
+write the same database records again.
+```
+
+may describe the same underlying problem as:
+
+```text
+An Airflow retry caused a duplicate-key violation.
+```
+
+The wording is different, but the meaning is similar.
+
+An engineer must normally:
+
+1. identify the affected service
+2. search multiple runbooks
+3. compare the symptoms with previous incidents
+4. determine possible root causes
+5. decide what logs, metrics, or records to inspect
+6. verify that the proposed actions are safe
+
+This manual process can delay the beginning of an effective investigation.
+
+## What OpsLens AI Does
+
+OpsLens AI provides one interface where an engineer can describe an incident in natural language.
+
+The application then:
+
+1. searches engineering runbooks using semantic vector retrieval
+2. searches for similar historical incidents
+3. removes weak or unrelated retrieval results
+4. sends only relevant evidence to the language model
+5. generates a structured troubleshooting response
+6. displays the documents and incidents used as evidence
+
+The generated response includes:
+
+- incident summary
+- likely causes
+- investigation steps
+- suggested diagnostic commands
+- similar historical incidents
+- evidence sources
+- confidence and limitations
+
+OpsLens AI does not automatically resolve incidents or replace engineering judgment.
+
+Its purpose is to reduce the time spent locating relevant information and help engineers begin an investigation with traceable evidence.
+
+## Example
+
+A user enters:
+
+```text
+The Airflow campaign-data pipeline partially loaded records before
+failing. After its automatic retry, it now receives a duplicate-key
+error.
+```
+
+OpsLens AI can retrieve:
+
+- the Airflow pipeline failure runbook
+- database duplicate-record guidance
+- a similar historical incident
+
+It can then explain:
+
+- why a partial insert may have caused the retry failure
+- why idempotency matters
+- which task attempts and database records should be inspected
+- whether the pipeline uses `INSERT`, `UPSERT`, or `MERGE`
+- which sources support the investigation
 
 ## Features
 
 - RAG-based engineering runbook search
-- Semantic retrieval using ChromaDB
-- Semantic historical incident search
+- semantic retrieval using ChromaDB
+- semantic historical-incident search
 - MCP server and client integration
 - MCP tool discovery and invocation
-- Retrieval-distance relevance filtering
-- Evidence-grounded LLM responses
-- Source citations
-- Unsupported-question detection
-- Retrieval evaluation suite
+- retrieval-distance relevance filtering
+- evidence-grounded LLM responses
+- source attribution
+- unsupported-question detection
+- retrieval evaluation suite
+- user-friendly error handling
 - Streamlit-based portfolio interface
 
 ## Application Screenshots
@@ -28,27 +121,27 @@ The application searches synthetic engineering runbooks and historical incidents
   width="100%"
 />
 
-### Incident Investigation
+### Generated Incident Investigation
 
 <img
   src="docs/screenshots/Airflow-incident-investigation.png"
-  alt="OpsLens AI incident investigation results"
+  alt="OpsLens AI generated Airflow incident investigation"
   width="100%"
 />
 
-### Generated Incident Response
+### Retrieved Runbook Evidence
 
 <img
   src="docs/screenshots/Airflow-incident-response.png"
-  alt="Generated evidence-grounded incident response"
+  alt="Runbook evidence retrieved for the Airflow incident"
   width="100%"
 />
 
-### Similar Historical Incident
+### Similar Historical Incidents
 
 <img
   src="docs/screenshots/Airflow-Historical-incident.png"
-  alt="Retrieved similar historical incident"
+  alt="Historical incidents retrieved for the Airflow issue"
   width="100%"
 />
 
@@ -56,7 +149,7 @@ The application searches synthetic engineering runbooks and historical incidents
 
 <img
   src="docs/screenshots/Unsupported-Incident.png"
-  alt="Unsupported incident handling"
+  alt="OpsLens AI insufficient-evidence handling"
   width="100%"
 />
 
@@ -80,7 +173,10 @@ search_runbooks          search_incidents
   v                            v
 Runbook ChromaDB         Incident ChromaDB
   |                            |
-  |--------- Retrieved Evidence|
+  |-------- Retrieved Evidence |
+                |
+                v
+         Relevance Filtering
                 |
                 v
          Prompt Augmentation
@@ -94,19 +190,27 @@ Runbook ChromaDB         Incident ChromaDB
 
 ## How RAG Works
 
+RAG stands for **Retrieval-Augmented Generation**.
+
+OpsLens AI uses RAG through the following process:
+
 1. Engineering runbooks are loaded from Markdown files.
 2. Each runbook is divided into overlapping chunks.
-3. ChromaDB creates and stores embeddings for those chunks.
-4. The user’s incident description is converted into an embedding.
-5. ChromaDB retrieves semantically similar runbook chunks.
-6. Weak matches are removed using a retrieval-distance threshold.
-7. Relevant historical incidents are retrieved through semantic search.
-8. The retrieved evidence is added to the LLM prompt.
+3. An embedding model converts each chunk into a numerical vector.
+4. ChromaDB stores the document text, vectors, source names, and metadata.
+5. The user’s incident description is converted into a query vector.
+6. ChromaDB retrieves the semantically closest chunks.
+7. Weak matches are removed using a vector-distance threshold.
+8. The remaining evidence is added to the language-model prompt.
 9. The language model generates an evidence-grounded investigation.
 
-RAG helps reduce hallucinations because the model is instructed to answer using retrieved project-specific evidence instead of relying only on general model knowledge.
+Without RAG, the language model would answer using only its general training knowledge.
+
+With RAG, the model receives project-specific evidence before generating the response.
 
 ## How MCP Is Used
+
+MCP stands for **Model Context Protocol**.
 
 OpsLens AI runs a local MCP server that exposes the following tools:
 
@@ -116,17 +220,55 @@ OpsLens AI runs a local MCP server that exposes the following tools:
 
 The application acts as an MCP client. It:
 
-1. Starts the MCP server.
-2. Initializes an MCP session.
-3. Discovers available tools.
-4. Calls the retrieval tools using structured arguments.
-5. Receives structured evidence.
-6. Passes that evidence to the language model.
+1. starts the MCP server
+2. initializes an MCP session
+3. discovers the tools exposed by the server
+4. invokes tools using structured arguments
+5. receives structured retrieval results
+6. passes the results into the RAG generation workflow
 
 MCP does not replace RAG.
 
 - **RAG** retrieves relevant knowledge and grounds the model response.
-- **MCP** standardizes how the application accesses tools and external data sources.
+- **MCP** standardizes how the AI application accesses tools and data sources.
+
+The current implementation uses deterministic tool orchestration. The application explicitly calls the runbook and historical-incident search tools for each investigation.
+
+## MCP Tools
+
+### `search_runbooks`
+
+Searches engineering runbook chunks using semantic vector similarity.
+
+Example input:
+
+```json
+{
+  "query": "Airflow retry caused duplicate records",
+  "limit": 3,
+  "max_distance": 0.95
+}
+```
+
+### `search_incidents`
+
+Searches historical incidents using semantic vector similarity.
+
+Example input:
+
+```json
+{
+  "query": "A scheduled job reran and wrote the same rows again",
+  "limit": 2,
+  "max_distance": 1.25
+}
+```
+
+### `read_runbook`
+
+Reads the complete content of a selected Markdown runbook.
+
+The tool validates the requested filename to prevent access outside the runbook directory.
 
 ## Technology Stack
 
@@ -134,7 +276,7 @@ MCP does not replace RAG.
 - Streamlit
 - Model Context Protocol Python SDK
 - ChromaDB
-- Local embedding model
+- local embedding model
 - OpenAI Responses API
 - python-dotenv
 - Git and GitHub
@@ -173,13 +315,13 @@ opslens-ai/
 
 ## Prerequisites
 
-Install the following before running the project:
+Install or configure:
 
 - Python 3.10 or newer
 - Git
-- An OpenAI API key
-- A terminal
-- A modern web browser
+- an OpenAI API key
+- a terminal
+- a modern web browser
 
 Check your Python version:
 
@@ -212,7 +354,7 @@ Activate it on Windows PowerShell:
 .venv\Scripts\Activate.ps1
 ```
 
-After activation, your terminal should show:
+After activation, the terminal should begin with:
 
 ```text
 (.venv)
@@ -240,9 +382,9 @@ OPENAI_API_KEY=your_openai_api_key
 OPENAI_MODEL=gpt-5-mini
 ```
 
-Do not commit `.env` to GitHub.
+The `.env` file must not be committed to GitHub.
 
-The repository’s `.gitignore` should contain:
+The repository’s `.gitignore` should include:
 
 ```gitignore
 .env
@@ -254,29 +396,43 @@ chroma_db/
 .streamlit/
 ```
 
-## 5. Build and test the retrieval indexes
-
-Run the runbook retrieval test:
+## 5. Build and test the runbook index
 
 ```bash
 python rag.py
 ```
 
-Run the historical incident retrieval test:
+This command:
+
+- loads the Markdown runbooks
+- divides them into chunks
+- generates local embeddings
+- stores the chunks in ChromaDB
+- runs a sample semantic search
+
+## 6. Build and test the historical-incident index
 
 ```bash
 python incident_retrieval.py
 ```
 
-These commands create local ChromaDB collections inside:
+This command:
+
+- loads the synthetic incident records
+- creates one searchable document per incident
+- generates embeddings
+- stores them in a separate ChromaDB collection
+- runs a sample semantic search
+
+The generated vector database is stored in:
 
 ```text
 chroma_db/
 ```
 
-The directory is generated locally and is not committed to Git.
+This directory is generated locally and is excluded from Git.
 
-## 6. Validate the MCP server
+## 7. Validate the MCP server
 
 ```bash
 python -c "import mcp_server; print('MCP server valid')"
@@ -288,66 +444,74 @@ Expected output:
 MCP server valid
 ```
 
-## 7. Test the MCP client
+## 8. Test the MCP client
 
 ```bash
 python mcp_client.py
 ```
 
-This verifies:
+This validates:
 
 - MCP server startup
 - session initialization
 - tool discovery
+- tool schemas
 - tool invocation
 - structured tool responses
 
-## 8. Test the complete workflow
+## 9. Test the complete analysis workflow
 
 ```bash
 python incident_analyzer.py
 ```
 
-This runs the full pipeline:
+This runs:
 
 ```text
-Incident
-  ↓
-MCP tools
-  ↓
-Semantic retrieval
-  ↓
+Incident description
+  |
+  v
+MCP retrieval tools
+  |
+  v
+Semantic evidence retrieval
+  |
+  v
+Relevance filtering
+  |
+  v
 Prompt augmentation
-  ↓
+  |
+  v
 OpenAI generation
 ```
 
-## 9. Run the evaluation suite
+## 10. Run the evaluation suite
 
 ```bash
 python evaluation.py
 ```
 
-Expected result:
+Expected output:
 
 ```text
 Evaluation result: 4/4 passed
 ```
 
-The evaluation currently tests:
+The evaluation suite tests:
 
 - Airflow duplicate-retry retrieval
 - API-timeout retrieval
 - duplicate-source-file retrieval
 - unsupported Kubernetes incident rejection
 
-## 10. Start the Streamlit application
+## 11. Start the application
 
 ```bash
 python -m streamlit run app.py
 ```
 
-The application should open in your browser at:
+The application should open at:
 
 ```text
 http://localhost:8501
@@ -358,59 +522,61 @@ http://localhost:8501
 ## Airflow Duplicate-Key Failure
 
 ```text
-The Airflow campaign-data pipeline partially loaded records before failing.
-After its automatic retry, it now receives a duplicate-key error.
+The Airflow campaign-data pipeline partially loaded records before
+failing. After its automatic retry, it now receives a duplicate-key
+error.
 ```
 
-Expected behavior:
+Expected retrieval:
 
-- retrieves `airflow_failures.md`
-- may retrieve `database_errors.md`
-- retrieves `INC-1001`
-- discusses idempotency, partial inserts, UPSERT, and safe retry behavior
+- `airflow_failures.md`
+- `INC-1001`
+- potentially other duplicate-record evidence that passes the threshold
 
 ## API Timeout
 
 ```text
 The reporting API returns HTTP 504 errors during high traffic.
-Database requests are slow and the application connection pool appears exhausted.
+Database requests are slow and the application connection pool appears
+exhausted.
 ```
 
-Expected behavior:
+Expected retrieval:
 
-- retrieves `api_timeouts.md`
-- retrieves `INC-1002`
-- discusses downstream latency, database performance, tracing, and connection-pool usage
+- `api_timeouts.md`
+- `INC-1002`
 
 ## Duplicate Source File
 
 ```text
-The ingestion service processed the same source file twice and created duplicate rows.
+The ingestion service processed the same source file twice and created
+duplicate rows.
 ```
 
-Expected behavior:
+Expected retrieval:
 
-- retrieves `INC-1003`
-- discusses processed-file tracking, checksums, and deduplication
+- `INC-1003`
+- relevant duplicate-record guidance when it passes the threshold
 
 ## Unsupported Kubernetes Incident
 
 ```text
-A Kubernetes pod cannot be scheduled because every node reports insufficient memory.
+A Kubernetes pod cannot be scheduled because every node reports
+insufficient memory.
 ```
 
 Expected behavior:
 
-- no runbook evidence should pass the relevance threshold
-- no unrelated historical incident should be used
-- the model should return an insufficient-evidence response
-- the model should not invent unsupported Kubernetes commands
+- unrelated runbook chunks are removed
+- unrelated historical incidents are removed
+- the model reports insufficient evidence
+- unsupported Kubernetes commands are not generated
 
 # Retrieval Relevance Filtering
 
-Vector databases always return nearest neighbors, even when the available results are poor matches.
+Vector databases return nearest neighbors even when none of the available documents are genuinely relevant.
 
-OpsLens AI applies distance thresholds before sending retrieved content to the language model.
+OpsLens AI applies maximum-distance thresholds before retrieved content is sent to the language model.
 
 Current thresholds:
 
@@ -419,9 +585,28 @@ Runbook maximum distance: 0.95
 Historical incident maximum distance: 1.25
 ```
 
-Results above these thresholds are discarded.
+Smaller distances indicate stronger semantic similarity.
 
-These values were tested against both supported and unsupported incident examples.
+Results exceeding the configured threshold are removed.
+
+The current values were selected using supported and unsupported evaluation queries.
+
+## Retrieval Evaluation
+
+The evaluation suite checks whether:
+
+- at least one acceptable runbook is retrieved
+- an acceptable historical incident is retrieved when required
+- supported queries receive evidence
+- unsupported queries receive no evidence
+
+The evaluation intentionally accepts multiple valid retrieval results rather than requiring one exact document ordering.
+
+Run it with:
+
+```bash
+python evaluation.py
+```
 
 ## Safety and Reliability
 
@@ -432,47 +617,48 @@ The project includes:
 - path-traversal protection for runbook access
 - retrieval relevance thresholds
 - explicit insufficient-evidence behavior
-- separation of evidence and hypotheses
+- separation between evidence and hypotheses
 - no automatic execution of generated commands
 - no destructive production actions without review
 - user-friendly API and application error handling
+- retrieval tests for supported and unsupported queries
 
 ## Current Limitations
 
-- Small synthetic knowledge base
-- Local embedding model
-- MCP server runs through stdio
-- MCP server is started for each analysis request
-- Limited number of historical incidents
-- No authentication or user accounts
-- No direct access to real logs, metrics, databases, or monitoring tools
-- Generated recommendations still require human review
-- Response latency may be noticeable during local execution
+- small synthetic knowledge base
+- local embedding model
+- local ChromaDB storage
+- MCP server uses stdio
+- MCP server starts as a subprocess for each analysis
+- limited historical-incident dataset
+- no authentication or user accounts
+- no direct access to production logs or monitoring systems
+- recommendations still require human review
+- response latency may be noticeable during local execution
 
 ## Future Improvements
 
-- Persistent Streamable HTTP MCP server
+- persistent Streamable HTTP MCP server
 - response streaming
 - faster model configuration
 - concurrent MCP tool calls
+- retrieval caching
 - hybrid keyword and vector retrieval
-- retrieval reranking
-- automated RAG quality metrics
+- reranking
+- automated RAG-quality metrics
 - LangGraph workflow orchestration
 - Amazon Bedrock support
-- S3-backed knowledge-base ingestion
+- S3-based document ingestion
 - OpenTelemetry or CloudWatch observability
-- Jira, PagerDuty, Datadog, or ServiceNow integration
-- user authentication and role-based access
+- Jira, PagerDuty, Datadog, or ServiceNow integrations
+- user authentication and role-based access controls
 
 ## Interview Summary
 
-A concise explanation of the project:
-
-> OpsLens AI is an MCP-powered RAG incident investigation assistant. Engineering runbooks and historical incidents are embedded and stored in ChromaDB. When a user describes an incident, the application invokes MCP tools to retrieve semantically relevant evidence. It applies relevance thresholds to remove weak matches, augments the LLM prompt with the retrieved context, and generates a cautious investigation with likely causes, diagnostic steps, sources, confidence, and limitations.
+> OpsLens AI is an MCP-powered RAG incident investigation assistant. Engineering runbooks and historical incidents are embedded and stored in ChromaDB. When a user describes an incident, the application invokes MCP tools to retrieve semantically relevant evidence. It applies vector-distance thresholds to remove weak matches, augments the LLM prompt with the retrieved context, and generates a cautious investigation with likely causes, diagnostic steps, sources, confidence, and limitations.
 
 ## Disclaimer
 
-This is a portfolio prototype.
+OpsLens AI is a portfolio prototype.
 
 Generated recommendations must be reviewed by a qualified engineer before they are used in a production environment.
