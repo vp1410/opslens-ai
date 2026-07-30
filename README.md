@@ -51,7 +51,7 @@ ChromaDB               ChromaDB
               v
  Grounded Incident Analysis
 
- ## Application Screenshots
+## Application Screenshots
 
 ### Landing Page
 
