@@ -9,7 +9,7 @@ from chromadb.api.models.Collection import Collection
 INCIDENTS_FILE = Path("data/incidents.json")
 CHROMA_DIRECTORY = "chroma_db"
 INCIDENT_COLLECTION_NAME = "opslens_incidents"
-DEFAULT_MAX_DISTANCE = 1.0
+DEFAULT_MAX_DISTANCE = 1.25
 
 
 class IncidentSearchResult(TypedDict):
@@ -249,8 +249,12 @@ def main() -> None:
     results = search_incidents_semantically(
         query=query,
         collection=collection,
-        limit=2,
+        limit=3,
     )
+
+    if not results:
+        print("No incidents found.")
+        return
 
     for result in results:
         print("\n" + "=" * 70)

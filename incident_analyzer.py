@@ -15,7 +15,7 @@ PROJECT_ROOT = Path(__file__).parent
 MCP_SERVER_FILE = PROJECT_ROOT / "mcp_server.py"
 
 RUNBOOK_MAX_DISTANCE = 0.95
-INCIDENT_MAX_DISTANCE = 1.0
+INCIDENT_MAX_DISTANCE = 1.25
 
 
 def parse_tool_response(

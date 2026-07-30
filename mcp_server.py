@@ -18,7 +18,7 @@ from rag import (
 RUNBOOK_DIRECTORY = Path("data/runbooks")
 
 RUNBOOK_MAX_DISTANCE = 0.95
-INCIDENT_MAX_DISTANCE = 1.0
+INCIDENT_MAX_DISTANCE = 1.25
 
 
 mcp = FastMCP(
