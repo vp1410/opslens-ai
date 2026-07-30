@@ -59,211 +59,136 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+        @import url(
+            'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap'
+        );
+
+        /* Entire application */
         html,
         body,
+        .stApp,
         [data-testid="stAppViewContainer"],
-        .stApp {
-            overflow-x: hidden;
+        [data-testid="stMain"],
+        [data-testid="stMainBlockContainer"],
+        [data-testid="stSidebar"],
+        [data-testid="stSidebarContent"],
+        [data-testid="stMarkdownContainer"],
+        [data-testid="stAlertContainer"],
+        [data-testid="stMetric"],
+        [data-testid="stExpander"],
+        [data-testid="stTabs"],
+        [data-testid="stForm"],
+        div,
+        span,
+        p,
+        label,
+        a,
+        li,
+        ul,
+        ol,
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6,
+        button,
+        input,
+        textarea,
+        select {
+            font-family:
+                "IBM Plex Sans",
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif !important;
         }
 
-        .stApp {
-            background-color: #f7f9fc;
+        /* Code and technical output */
+        code,
+        pre,
+        kbd,
+        samp,
+        [data-testid="stCode"],
+        [data-testid="stJson"],
+        [data-testid="stCodeBlock"] {
+            font-family:
+                "IBM Plex Mono",
+                "SFMono-Regular",
+                Consolas,
+                monospace !important;
         }
 
-        [data-testid="stMainBlockContainer"] {
-            max-width: 1280px;
-            padding-top: 2rem;
-            padding-left: 2rem;
-            padding-right: 2rem;
-            padding-bottom: 4rem;
-            margin: 0 auto;
+        /* Main headings */
+        h1,
+        h2,
+        h3 {
+            font-weight: 600 !important;
+            letter-spacing: -0.02em;
         }
 
-        [data-testid="stSidebar"] {
-            background: #ffffff;
-            border-right: 1px solid #e7ebf2;
+        /* Streamlit buttons */
+        div[data-testid="stButton"] button {
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 500 !important;
         }
 
-        [data-testid="stSidebar"]
-        [data-testid="stSidebarContent"] {
-            overflow-x: hidden;
+        /* Text input and text area */
+        input,
+        textarea {
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 400 !important;
         }
 
-        [data-testid="stSidebar"] .block-container {
-            width: 100%;
-            max-width: 100%;
-            padding-top: 1.5rem;
-            padding-left: 1.25rem;
-            padding-right: 1.25rem;
+        /* Tabs */
+        button[data-baseweb="tab"] {
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 500 !important;
         }
 
-        .hero {
-            width: 100%;
-            box-sizing: border-box;
-            background:
-                linear-gradient(
-                    135deg,
-                    rgba(37, 99, 235, 0.98),
-                    rgba(79, 70, 229, 0.95)
-                );
-            border-radius: 20px;
-            padding: 2rem 2.2rem;
-            margin-bottom: 1.5rem;
-            color: white;
-            box-shadow: 0 16px 40px rgba(37, 99, 235, 0.18);
-            overflow-wrap: anywhere;
+        /* Metrics */
+        [data-testid="stMetricLabel"],
+        [data-testid="stMetricValue"],
+        [data-testid="stMetricDelta"] {
+            font-family: "IBM Plex Sans", sans-serif !important;
         }
 
+        /* Expanders */
+        [data-testid="stExpander"] summary {
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 500 !important;
+        }
+
+        /* Custom UI elements */
         .hero-title {
-            font-size: 2.2rem;
-            font-weight: 750;
-            margin: 0;
-            letter-spacing: -0.03em;
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 600;
         }
 
         .hero-subtitle {
-            font-size: 1rem;
-            margin-top: 0.65rem;
-            margin-bottom: 0;
-            color: rgba(255, 255, 255, 0.9);
-            max-width: 820px;
-            line-height: 1.6;
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 400;
         }
 
-        .section-card {
-            background: white;
-            border: 1px solid #e7ebf2;
-            border-radius: 16px;
-            padding: 1.25rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.04);
+        .section-title,
+        .source-name,
+        .incident-title {
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 600;
         }
 
-        .section-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #172033;
-            margin-bottom: 0.35rem;
-        }
-
-        .section-description {
-            color: #64748b;
-            font-size: 0.92rem;
-            line-height: 1.5;
+        .section-description,
+        .source-meta,
+        .source-content,
+        .incident-field,
+        .footer {
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 400;
         }
 
         .tool-card {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #166534;
-            border-radius: 12px;
-            padding: 0.85rem 1rem;
-            font-weight: 650;
-            text-align: center;
-            min-height: 58px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .source-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 1rem 1.1rem;
-            margin-bottom: 0.85rem;
-        }
-
-        .source-name {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .source-meta {
-            margin-top: 0.25rem;
-            margin-bottom: 0.65rem;
-            color: #64748b;
-            font-size: 0.82rem;
-        }
-
-        .source-content {
-            color: #334155;
-            font-size: 0.92rem;
-            line-height: 1.65;
-            white-space: pre-wrap;
-        }
-
-        .incident-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-left: 4px solid #6366f1;
-            border-radius: 12px;
-            padding: 1rem 1.1rem;
-            margin-bottom: 0.9rem;
-        }
-
-        .incident-title {
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 0.45rem;
-        }
-
-        .incident-field {
-            margin-top: 0.35rem;
-            color: #475569;
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-
-        div[data-testid="stTextArea"] textarea {
-            border-radius: 14px;
-            border: 1px solid #cbd5e1;
-            padding: 1rem;
-            min-height: 180px;
-            font-size: 0.98rem;
-            background: white;
-        }
-
-        div[data-testid="stTextArea"] textarea:focus {
-            border-color: #6366f1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
-        }
-
-        div[data-testid="stButton"] button {
-            border-radius: 10px;
-            font-weight: 650;
-            min-height: 42px;
-        }
-
-        div[data-testid="stMetric"] {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 0.9rem 1rem;
-        }
-
-        .footer {
-            color: #94a3b8;
-            text-align: center;
-            font-size: 0.8rem;
-            margin-top: 3rem;
-        }
-
-        @media (max-width: 900px) {
-            [data-testid="stMainBlockContainer"] {
-                padding-left: 1rem;
-                padding-right: 1rem;
-            }
-
-            .hero {
-                padding: 1.5rem;
-                border-radius: 16px;
-            }
-
-            .hero-title {
-                font-size: 1.8rem;
-            }
+            font-family: "IBM Plex Sans", sans-serif !important;
+            font-weight: 500;
         }
     </style>
     """,
