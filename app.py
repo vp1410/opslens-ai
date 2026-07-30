@@ -5,7 +5,12 @@ from typing import Any
 import streamlit as st
 
 from incident_analyzer import analyze_incident
-
+from openai import (
+    APIConnectionError,
+    APIStatusError,
+    AuthenticationError,
+    RateLimitError,
+)
 
 # -------------------------------------------------------------------
 # Constants
@@ -610,14 +615,63 @@ if analyze_clicked:
 
             st.session_state["analysis_result"] = result
 
-        except Exception as error:
+        except AuthenticationError:
             st.session_state["analysis_result"] = None
-
             st.error(
-                "The incident analysis could not be completed."
+                "OpenAI authentication failed. Verify the API key "
+                "in your .env file."
             )
 
-            st.exception(error)
+        except RateLimitError as error:
+            st.session_state["analysis_result"] = None
+
+            error_text = str(error).lower()
+
+            if "insufficient_quota" in error_text:
+                st.error(
+                    "The OpenAI API account has insufficient quota. "
+                    "Check your API billing balance."
+                )
+            else:
+                st.error(
+                    "The OpenAI API rate limit was reached. "
+                    "Try the request again shortly."
+                )
+
+        except APIConnectionError:
+            st.session_state["analysis_result"] = None
+            st.error(
+                "OpsLens could not connect to the OpenAI API. "
+                "Check your internet connection."
+            )
+
+        except APIStatusError as error:
+            st.session_state["analysis_result"] = None
+            st.error(
+                "The OpenAI API returned an unexpected error "
+                f"with status {error.status_code}."
+            )
+
+        except FileNotFoundError as error:
+            st.session_state["analysis_result"] = None
+            st.error(
+                "A required local knowledge-base file is missing."
+            )
+            st.code(str(error), language="text")
+
+        except ValueError as error:
+            st.session_state["analysis_result"] = None
+            st.error(str(error))
+
+        except Exception as error:
+            st.session_state["analysis_result"] = None
+            st.error(
+                "The analysis could not be completed because of "
+                "an unexpected application error."
+            )
+
+            with st.expander("Technical details"):
+                st.exception(error)
 
 
 # -------------------------------------------------------------------
